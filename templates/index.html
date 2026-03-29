@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SleepScan — PSG Report Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0d1117;--paper:#f7f4ef;--dim:#8a8070;
+  --navy:#1a1a2e;--navy2:#2a2a4e;
+  --border:#e0dbd0;--good:#2d6a4f;--warn:#b5451b;--ok:#1a4d6b;
+}
+html,body{height:100%;background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--navy);color:#e8e4d9;padding:2rem 1.5rem;display:flex;flex-direction:column;gap:1.5rem;position:sticky;top:0;height:100vh}
+.logo{font-family:'DM Serif Display',serif;font-size:1.5rem;color:#f7f4ef;line-height:1.1}
+.logo small{display:block;font-family:'Outfit',sans-serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase;opacity:.4;margin-top:4px}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav-item{padding:.55rem .8rem;border-radius:6px;font-size:13px;cursor:pointer;color:#b0aca4;transition:all .15s;display:flex;align-items:center;gap:10px}
+.nav-item.active,.nav-item:hover{background:rgba(255,255,255,.08);color:#f7f4ef}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.4;flex-shrink:0}
+.nav-item.active .nav-dot{opacity:1;background:#7ab8ff}
+.main{padding:2.5rem 3rem;max-width:980px}
+.topbar{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2rem}
+.page-title{font-family:'DM Serif Display',serif;font-size:2rem}
+.page-title em{font-style:italic;color:var(--dim)}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.5rem 2rem;margin-bottom:1.5rem}
+.card-title{font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:1rem}
+.upload-zone{border:1.5px dashed #c8c4b8;border-radius:10px;padding:2.2rem 1rem;text-align:center;cursor:pointer;transition:all .2s;position:relative;margin-bottom:1.5rem}
+.upload-zone:hover,.upload-zone.drag{border-color:#8a8070;background:rgba(0,0,0,.02)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{width:36px;height:36px;margin:0 auto .7rem;opacity:.22}
+.upload-label{font-size:13px;color:var(--dim);line-height:1.7}
+.upload-label strong{color:var(--ink);font-weight:500;display:block;font-size:14px;margin-bottom:2px}
+.upload-hint{font-size:11px;color:#b8b0a4;margin-top:.5rem;font-family:'DM Mono',monospace}
+.fname{margin-top:.5rem;font-size:11px;font-family:'DM Mono',monospace;color:var(--good);display:none}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.field label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:.35rem}
+.field input,.field select{width:100%;padding:.55rem .8rem;border:1px solid var(--border);border-radius:6px;font-family:'Outfit',sans-serif;font-size:14px;background:#fafaf8;color:var(--ink);outline:none;transition:border .15s}
+.field input:focus,.field select:focus{border-color:#8a8070;background:#fff}
+.prog-wrap{display:none;margin-top:1rem}
+.prog-label{font-size:11px;color:var(--dim);margin-bottom:.4rem;font-family:'DM Mono',monospace}
+.prog-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--navy);border-radius:2px;width:0;transition:width .4s ease}
+.err{display:none;background:#fff7f4;border:1px solid #f0c0b0;border-radius:8px;padding:.8rem 1rem;margin-top:1rem;font-size:13px;color:var(--warn)}
+.btn-gen{width:100%;padding:.85rem;background:var(--navy);color:#f7f4ef;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:all .2s;margin-top:1rem;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.btn-gen:hover:not(:disabled){background:var(--navy2);transform:translateY(-1px)}
+.btn-gen:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.sec-div{display:flex;align-items:center;gap:1rem;color:var(--dim);font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin:2rem 0;display:none}
+.sec-div::before,.sec-div::after{content:'';flex:1;height:1px;background:var(--border)}
+.report{display:none}
+.report.show{display:block;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.rpt-header{background:var(--navy);color:#f7f4ef;border-radius:12px;padding:1.8rem 2rem;margin-bottom:1.2rem;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem}
+.rpt-patient{font-family:'DM Serif Display',serif;font-size:1.6rem}
+.rpt-meta{font-size:11px;opacity:.4;font-family:'DM Mono',monospace;margin-top:.3rem}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:.8rem;margin-bottom:1.2rem}
+.metric{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem}
+.metric-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:.4rem}
+.metric-value{font-size:1.7rem;font-weight:600;font-family:'DM Mono',monospace;line-height:1}
+.metric-sub{font-size:10px;color:var(--dim);margin-top:.3rem;line-height:1.4}
+.metric.warn .metric-value{color:var(--warn)}
+.metric.ok .metric-value{color:var(--ok)}
+.metric.good .metric-value{color:var(--good)}
+.plot-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.3rem 1.5rem;margin-bottom:1.2rem}
+.sec-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-bottom:.8rem}
+.plot-wrap img{width:100%;border-radius:6px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.2rem}
+.panel{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.4rem 1.5rem}
+.panel-title{font-family:'DM Serif Display',serif;font-size:1.05rem;margin-bottom:.8rem}
+.cluster-label{font-size:13px;font-weight:500;color:var(--navy);margin-bottom:.5rem}
+.cluster-desc{font-size:12px;line-height:1.75;color:#3a3530}
+.var-title{font-size:13px;font-weight:500;color:var(--navy);margin-bottom:.5rem}
+.var-signals{font-size:11px;color:var(--dim);margin-bottom:.5rem;font-family:'DM Mono',monospace}
+.var-meaning{font-size:12px;line-height:1.75;color:#3a3530}
+.var-bars{margin-top:.8rem;padding-top:.8rem;border-top:1px solid #f0ebe0}
+.var-row{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.var-name{width:36px;color:var(--dim);font-family:'DM Mono',monospace;font-size:10px}
+.var-track{flex:1;height:5px;background:#f0ebe0;border-radius:3px;overflow:hidden}
+.var-fill{height:100%;border-radius:3px}
+.var-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);width:34px;text-align:right}
+.stage-bar{display:flex;height:24px;border-radius:6px;overflow:hidden;margin-bottom:.7rem}
+.seg{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;font-family:'DM Mono',monospace}
+.sleg{display:flex;gap:.8rem;flex-wrap:wrap}
+.sl{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--dim)}
+.sl-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.actions{display:flex;gap:.8rem;align-items:center;margin-bottom:3rem;flex-wrap:wrap}
+.btn-dl{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.4rem;background:var(--navy);color:#f7f4ef;border:none;border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+.btn-dl:hover{background:var(--navy2)}
+.btn-dl:disabled{opacity:.5;cursor:not-allowed}
+.btn-new{display:flex;align-items:center;gap:.5rem;padding:.75rem 1.4rem;background:transparent;color:var(--dim);border:1px solid var(--border);border-radius:8px;font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;transition:all .2s}
+.btn-new:hover{border-color:#8a8070;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="logo">SleepScan<small>PSG Report System</small></div>
+    <nav class="nav">
+      <div class="nav-item active"><span class="nav-dot"></span>New report</div>
+      <div class="nav-item"><span class="nav-dot"></span>Report history</div>
+      <div class="nav-item"><span class="nav-dot"></span>Sleep type profiles</div>
+      <div class="nav-item"><span class="nav-dot"></span>Brain signal patterns</div>
+      <div class="nav-item"><span class="nav-dot"></span>Settings</div>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="page-title">New <em>PSG report</em></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Upload PSG files</div>
+
+      <div class="upload-zone" id="dz-zip">
+        <input type="file" id="zip-input" accept=".zip"/>
+        <div class="upload-icon">
+          <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="4" y="8" width="28" height="22" rx="3"/>
+            <path d="M12 8V6a2 2 0 012-2h8a2 2 0 012 2v2"/>
+            <path d="M18 16v8M14 20l4-4 4 4"/>
+          </svg>
+        </div>
+        <div class="upload-label">
+          <strong>Drop your PSG zip file here</strong>
+        </div>
+
+        <div class="fname" id="fname-zip"></div>
+      </div>
+
+      <div class="card-title" style="margin-bottom:1rem">Patient details</div>
+      <div class="form-grid">
+        <div class="field"><label>Patient ID</label><input id="pid" type="text" placeholder="e.g. SC4001"/></div>
+        <div class="field"><label>Recording date</label><input id="recdate" type="date"/></div>
+        <div class="field"><label>Age</label><input id="age" type="number" placeholder="Age" min="1" max="120"/></div>
+        <div class="field"><label>Gender</label>
+          <select id="gender">
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </div>
+        <div class="field"><label>Sleep onset time</label><input id="onset" type="time" value="23:00"/></div>
+        <div class="field"><label>Night number</label>
+          <select id="night"><option>Night 1</option><option selected>Night 2</option><option>Night 3</option></select>
+        </div>
+        <div class="field"><label>Technologist</label><input id="tech" type="text" placeholder="Name"/></div>
+        <div class="field"><label>Clinic / Lab</label><input id="clinic" type="text" placeholder="Institution"/></div>
+      </div>
+
+      <div class="prog-wrap" id="prog-wrap">
+        <div class="prog-label" id="prog-label">Extracting files...</div>
+        <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+      </div>
+      <div class="err" id="err-msg"></div>
+
+      <button class="btn-gen" id="gen-btn" onclick="runAnalysis()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 8h10M9 4l4 4-4 4"/>
+        </svg>
+        Analyse PSG &amp; generate report
+      </button>
+    </div>
+
+    <div class="sec-div" id="rpt-div">report output</div>
+
+    <div class="report" id="report-out">
+
+      <div class="rpt-header">
+        <div>
+          <div class="rpt-patient" id="r-patient">—</div>
+          <div class="rpt-meta" id="r-meta">—</div>
+        </div>
+
+      </div>
+
+      <div class="metrics" id="metrics-row"></div>
+
+      <div class="plot-wrap">
+        <div class="sec-label">Sleep architecture · full night</div>
+        <img id="hypno-img" src="" alt="Hypnogram"/>
+      </div>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-title">Stage distribution</div>
+          <div class="stage-bar" id="stage-bar"></div>
+          <div class="sleg" id="stage-legend"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Sleep type profile</div>
+          <div id="cluster-desc" style="font-size:13px;line-height:1.85;color:#3a3530;margin-top:.5rem">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Brain signal behaviour</div>
+        <div id="signal-insight" style="font-size:13px;line-height:1.9;color:#3a3530;margin-bottom:1.4rem">—</div>
+        <div id="signal-cards" style="display:flex;flex-direction:column;gap:0"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-dl" id="dl-btn" onclick="downloadPDF()">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M7.5 1v9M4.5 7l3 3 3-3M2 11h11"/>
+          </svg>
+          Download PDF report
+        </button>
+        <button class="btn-new" onclick="resetForm()">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2 7.5a5.5 5.5 0 1010.5-2M2 2v4h4"/>
+          </svg>
+          New report
+        </button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+const STAGE_COLORS={W:'#c8c0f8',N1:'#a8d4ff',N2:'#6aabee',N3:'#2a50b4',REM:'#c890e8'};
+let currentData=null;
+
+const dz=document.getElementById('dz-zip');
+const inp=document.getElementById('zip-input');
+
+inp.addEventListener('change',()=>{
+  const f=inp.files[0];
+  if(!f) return;
+  showFname('fname-zip',f.name);
+  const pid=document.getElementById('pid');
+  if(!pid.value){
+    const m=f.name.match(/SC\d+|PT[-_]?\d+/i);
+    if(m) pid.value=m[0].toUpperCase();
+  }
+});
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('drag');
+  if(e.dataTransfer.files[0]){inp.files=e.dataTransfer.files;showFname('fname-zip',e.dataTransfer.files[0].name);}
+});
+function showFname(id,name){const el=document.getElementById(id);el.textContent='✓ '+name;el.style.display='block';}
+
+async function runAnalysis(){
+  const zipFile=document.getElementById('zip-input').files[0];
+  if(!zipFile){showErr('Please upload a zip file containing both EDF files.');return;}
+  hideErr();setLoading(true);
+  const fd=new FormData();
+  fd.append('zip_file',zipFile);
+  fd.append('patient_id',document.getElementById('pid').value||'PT-001');
+  fd.append('age',document.getElementById('age').value||'50');
+  fd.append('gender',document.getElementById('gender').value);
+  fd.append('sleep_onset',document.getElementById('onset').value||'23:00');
+  fd.append('night',document.getElementById('night').value);
+  fd.append('technologist',document.getElementById('tech').value||'');
+  fd.append('clinic',document.getElementById('clinic').value||'');
+  fd.append('rec_date',document.getElementById('recdate').value||'');
+  prog(15,'Extracting files from zip...');
+  try{
+    prog(40,'Reading EDF signals...');
+    const res=await fetch('/analyze',{method:'POST',body:fd});
+    prog(70,'Matching sleep type profile...');
+    if(!res.ok){const e=await res.json();throw new Error(e.error||'Server error');}
+    const data=await res.json();
+    prog(95,'Building report...');
+    currentData=data;
+    setTimeout(()=>{setLoading(false);renderReport(data);},300);
+  }catch(e){setLoading(false);showErr('Error: '+e.message);}
+}
+
+function renderReport(d){
+  const m=d.metrics,var_=d.var_insight,cd=d.cluster_desc;
+  const date=d.rec_date
+    ?new Date(d.rec_date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})
+    :new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('r-patient').textContent=`Patient ${d.patient_id} · ${d.night} · Age ${d.age} · ${d.gender.charAt(0).toUpperCase()+d.gender.slice(1)}`;
+  const metaParts=['Generated '+date,d.clinic,d.technologist].filter(x=>x&&x.trim());document.getElementById('r-meta').textContent=metaParts.join(' · ');
+  const cards=[
+    {l:'Sleep efficiency',v:`${m.efficiency}%`,s:'Typical ≥85%',c:m.efficiency<85?'warn':'good'},
+    {l:'Transitions',v:m.transitions,s:'Typical 150–200',c:m.transitions>200?'warn':'good'},
+    {l:'Deep sleep N3',v:`${m.n3_pct}%`,s:'Typical 15–25%',c:m.n3_pct<15?'warn':'good'},
+    {l:'REM sleep',v:`${m.rem_pct}%`,s:'Typical 20–25%',c:m.rem_pct<18?'ok':'good'},
+    {l:'Total sleep',v:`${m.tst_hours}h`,s:'Time asleep',c:'ok'},
+  ];
+  document.getElementById('metrics-row').innerHTML=cards.map(c=>`<div class="metric ${c.c}"><div class="metric-label">${c.l}</div><div class="metric-value">${c.v}</div><div class="metric-sub">${c.s}</div></div>`).join('');
+  document.getElementById('hypno-img').src='data:image/png;base64,'+d.hypno_img;
+  const pct=m.stage_pct;
+  document.getElementById('stage-bar').innerHTML=['W','N1','N2','N3','REM'].map(s=>`<div class="seg" style="width:${pct[s]||0}%;background:${STAGE_COLORS[s]};color:${(pct[s]||0)>10?'#fff':'transparent'}">${s}</div>`).join('');
+  document.getElementById('stage-legend').innerHTML=['W','N1','N2','N3','REM'].map(s=>`<div class="sl"><div class="sl-dot" style="background:${STAGE_COLORS[s]}"></div>${s} ${pct[s]||0}%</div>`).join('');
+  document.getElementById('cluster-desc').textContent=cd.desc;
+  document.getElementById('signal-insight').textContent=var_.insight||'';
+  const emgP=var_.emg_persistence||0,eegP=var_.eeg_persistence||0,eogP=var_.eog_persistence||0;
+  function sigStrength(v){
+    if(v>=0.70) return {label:'High continuity',color:'#2d6a4f',bg:'#f0faf4',border:'#b8dfc8'};
+    if(v>=0.50) return {label:'Moderate continuity',color:'#7a5010',bg:'#fffaf0',border:'#f0d8a8'};
+    return {label:'Low continuity',color:'#6a6060',bg:'#f8f6f4',border:'#e0dbd0'};
+  }
+  const sigCards=[
+    {name:'EEG',desc:'Brain wave activity',val:eegP},
+    {name:'EOG',desc:'Eye movement activity',val:eogP},
+    {name:'EMG',desc:'Chin muscle tone',val:emgP},
+  ];
+  document.getElementById('signal-cards').innerHTML=sigCards.map(s=>{
+    const st=sigStrength(s.val);
+    const pct=Math.round(s.val*100);
+    return `<div style="padding:.9rem 0;border-bottom:1px solid #f0ebe0">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.35rem">
+        <div>
+          <span style="font-size:13px;font-weight:500;color:#0d1117">${s.name}</span>
+          <span style="font-size:11px;color:#8a8070;margin-left:6px">${s.desc}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:${st.color};font-weight:500">${s.val.toFixed(3)}</span>
+          <span style="font-size:10px;color:${st.color};background:${st.bg};border:1px solid ${st.border};border-radius:4px;padding:1px 7px">${st.label}</span>
+        </div>
+      </div>
+      <div style="height:6px;background:#f0ebe0;border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${st.color};border-radius:3px;transition:width .6s ease"></div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('rpt-div').style.display='flex';
+  const rout=document.getElementById('report-out');
+  rout.classList.add('show');
+  setTimeout(()=>rout.scrollIntoView({behavior:'smooth',block:'start'}),200);
+}
+
+async function downloadPDF(){
+  if(!currentData){alert('No report yet.');return;}
+  const btn=document.getElementById('dl-btn');
+  btn.disabled=true;btn.textContent='Generating PDF...';
+  try{
+    const res=await fetch('/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(currentData)});
+    if(!res.ok) throw new Error('PDF failed');
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`sleep_report_${currentData.patient_id}.pdf`;a.click();
+    URL.revokeObjectURL(url);
+  }catch(e){showErr('PDF error: '+e.message);}
+  finally{
+    btn.disabled=false;
+    btn.innerHTML=`<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7.5 1v9M4.5 7l3 3 3-3M2 11h11"/></svg> Download PDF report`;
+  }
+}
+
+function prog(pct,label){document.getElementById('prog-wrap').style.display='block';document.getElementById('prog-fill').style.width=pct+'%';document.getElementById('prog-label').textContent=label;}
+function setLoading(on){const btn=document.getElementById('gen-btn');btn.disabled=on;btn.innerHTML=on?'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg> Analysing...':'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg> Analyse PSG &amp; generate report';}
+function showErr(m){const e=document.getElementById('err-msg');e.textContent=m;e.style.display='block';}
+function hideErr(){document.getElementById('err-msg').style.display='none';}
+function resetForm(){currentData=null;document.getElementById('rpt-div').style.display='none';document.getElementById('report-out').classList.remove('show');document.getElementById('prog-wrap').style.display='none';document.getElementById('prog-fill').style.width='0';document.getElementById('fname-zip').style.display='none';hideErr();window.scrollTo({top:0,behavior:'smooth'});}
+</script>
+</body>
+</html>
