@@ -163,6 +163,12 @@ html,body{height:100%;background:var(--paper);color:var(--ink);font-family:'Outf
         </svg>
         Analyse PSG &amp; generate report
       </button>
+      <button class="btn-gen" id="recalc-btn" onclick="recalculate()" style="display:none;background:#2a4a6e;margin-top:.5rem">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 8a6 6 0 1010.5-4M2 2v4h4"/>
+        </svg>
+        Update report with new details
+      </button>
     </div>
 
     <div class="sec-div" id="rpt-div">report output</div>
@@ -192,7 +198,9 @@ html,body{height:100%;background:var(--paper);color:var(--ink);font-family:'Outf
         </div>
         <div class="panel">
           <div class="panel-title">Sleep type profile</div>
-          <div id="cluster-desc" style="font-size:13px;line-height:1.85;color:#3a3530;margin-top:.5rem">—</div>
+          <ul id="cluster-desc" style="font-size:13px;line-height:1.9;color:#3a3530;margin-top:.6rem;padding-left:1.2rem;list-style:none">
+            <li>—</li>
+          </ul>
         </div>
       </div>
 
@@ -233,10 +241,8 @@ inp.addEventListener('change',()=>{
   if(!f) return;
   showFname('fname-zip',f.name);
   const pid=document.getElementById('pid');
-  if(!pid.value){
-    const m=f.name.match(/SC\d+|PT[-_]?\d+/i);
-    if(m) pid.value=m[0].toUpperCase();
-  }
+  const m=f.name.match(/SC\d+|ST\d+|PT[-_]?\d+/i);
+  if(m) pid.value=m[0].toUpperCase();
 });
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
 dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
@@ -292,7 +298,10 @@ function renderReport(d){
   const pct=m.stage_pct;
   document.getElementById('stage-bar').innerHTML=['W','N1','N2','N3','REM'].map(s=>`<div class="seg" style="width:${pct[s]||0}%;background:${STAGE_COLORS[s]};color:${(pct[s]||0)>10?'#fff':'transparent'}">${s}</div>`).join('');
   document.getElementById('stage-legend').innerHTML=['W','N1','N2','N3','REM'].map(s=>`<div class="sl"><div class="sl-dot" style="background:${STAGE_COLORS[s]}"></div>${s} ${pct[s]||0}%</div>`).join('');
-  document.getElementById('cluster-desc').textContent=cd.desc;
+  const bullets = cd.bullets || [];
+  document.getElementById('cluster-desc').innerHTML = bullets.map(b =>
+    '<li style="display:flex;gap:.5rem;margin-bottom:.3rem"><span style="color:#8a8070;flex-shrink:0;margin-top:2px">&#x2022;</span><span>' + b + '</span></li>'
+  ).join('');
   document.getElementById('signal-insight').textContent=var_.insight||'';
   const emgP=var_.emg_persistence||0,eegP=var_.eeg_persistence||0,eogP=var_.eog_persistence||0;
   function sigStrength(v){
@@ -353,7 +362,31 @@ function prog(pct,label){document.getElementById('prog-wrap').style.display='blo
 function setLoading(on){const btn=document.getElementById('gen-btn');btn.disabled=on;btn.innerHTML=on?'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2"/></svg> Analysing...':'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg> Analyse PSG &amp; generate report';}
 function showErr(m){const e=document.getElementById('err-msg');e.textContent=m;e.style.display='block';}
 function hideErr(){document.getElementById('err-msg').style.display='none';}
-function resetForm(){currentData=null;document.getElementById('rpt-div').style.display='none';document.getElementById('report-out').classList.remove('show');document.getElementById('prog-wrap').style.display='none';document.getElementById('prog-fill').style.width='0';document.getElementById('fname-zip').style.display='none';hideErr();window.scrollTo({top:0,behavior:'smooth'});}
+function recalculate(){
+  hideErr(); setLoading(true);
+  const fd = new FormData();
+  fd.append('patient_id',   document.getElementById('pid').value||'PT-001');
+  fd.append('age',          document.getElementById('age').value||'50');
+  fd.append('gender',       document.getElementById('gender').value);
+  fd.append('sleep_onset',  document.getElementById('onset').value||'23:00');
+  fd.append('night',        document.getElementById('night').value);
+  fd.append('technologist', document.getElementById('tech').value||'');
+  fd.append('clinic',       document.getElementById('clinic').value||'');
+  fd.append('rec_date',     document.getElementById('recdate').value||'');
+  fd.append('stages',       JSON.stringify(currentData.stages));
+  fd.append('epoch_times',  JSON.stringify(currentData.epoch_times));
+  prog(50, 'Recalculating with new details...');
+  fetch('/recalculate', {method:'POST', body:fd})
+    .then(r=>r.json())
+    .then(data=>{
+      currentData=data;
+      setLoading(false);
+      renderReport(data);
+    })
+    .catch(e=>{ setLoading(false); showErr('Error: '+e.message); });
+}
+
+function resetForm(){currentData=null;document.getElementById('rpt-div').style.display='none';document.getElementById('report-out').classList.remove('show');document.getElementById('prog-wrap').style.display='none';document.getElementById('prog-fill').style.width='0';document.getElementById('fname-zip').style.display='none';document.getElementById('fname-zip').textContent='';document.getElementById('zip-input').value='';document.getElementById('pid').value='';document.getElementById('age').value='';document.getElementById('recdate').value='';document.getElementById('gender').value='female';document.getElementById('onset').value='23:00';document.getElementById('night').selectedIndex=1;document.getElementById('tech').value='';document.getElementById('clinic').value='';document.getElementById('recalc-btn').style.display='none';hideErr();window.scrollTo({top:0,behavior:'smooth'});}
 </script>
 </body>
 </html>

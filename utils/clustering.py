@@ -17,6 +17,63 @@ CLUSTER_PROFILES = {
     0: {
         'name':  'Mid-age Late-sleeping Female',
         'label': 'Late-onset sleep pattern',
+        'bullets': [
+            'Tends to fall asleep later in the evening',
+            'Common pattern among middle-aged adults',
+            'Sleep shows delayed onset with moderate fragmentation',
+            'Lighter transitions between sleep stages are typical',
+            'May benefit from consistent sleep timing routines',
+        ],
+    },
+    1: {
+        'name':  'Late-sleeping Male',
+        'label': 'Evening-type sleep pattern',
+        'bullets': [
+            'Naturally late sleep timing, often close to midnight',
+            'Reflects a delayed internal body clock',
+            'Common in younger to middle-aged males',
+            'Sleep quality is generally good once sleep begins',
+            'Total sleep time may be shortened by morning obligations',
+        ],
+    },
+    2: {
+        'name':  'Older Late-sleeping Female',
+        'label': 'Stable late-onset pattern',
+        'bullets': [
+            'Late sleep onset despite older age',
+            'Unusual pattern where body clock shifts later rather than earlier',
+            'Sleep is remarkably stable and consistent once asleep',
+            'Sleep depth is generally well preserved',
+            'Signal activity is highly regular throughout the night',
+        ],
+    },
+    3: {
+        'name':  'Elderly Early-sleeping Female',
+        'label': 'Early-onset sleep pattern',
+        'bullets': [
+            'Falls asleep early in the evening',
+            'Reflects the natural body clock shift that comes with aging',
+            'Sleep tends to be lighter overall',
+            'More frequent transitions between sleep stages',
+            'Earlier morning waking is common in this group',
+        ],
+    },
+    4: {
+        'name':  'Older Early-sleeping Male',
+        'label': 'Balanced early-onset pattern',
+        'bullets': [
+            'Moderately early sleep timing',
+            'One of the more efficient sleep patterns in the dataset',
+            'Well organised sleep cycles throughout the night',
+            'Brain and body signals coordinate effectively',
+            'Overall sleep architecture is stable and healthy',
+        ],
+    },
+}
+CLUSTER_PROFILES_OLD = {
+    0: {
+        'name':  'Mid-age Late-sleeping Female',
+        'label': 'Late-onset sleep pattern',
         'desc':  (
             'This person tends to fall asleep later in the evening, which is common among middle-aged adults. '
             'Their sleep architecture shows a pattern of delayed onset with moderate fragmentation. '
@@ -137,7 +194,7 @@ def match_cluster(age, gender, sleep_onset_str):
     best_dist  = float('inf')
 
     for cid, centroid in CLUSTER_CENTROIDS.items():
-        age_dist    = abs(age - centroid['age']) / 50.0
+        age_dist    = abs(age - centroid['age']) / 20.0
         onset_dist  = abs(onset_min - centroid['onset_min']) / 120.0
         gender_dist = 0.0 if gender_str == centroid['gender'] else 0.5
         dist        = age_dist + onset_dist + gender_dist

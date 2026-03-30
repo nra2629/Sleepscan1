@@ -133,24 +133,21 @@ def generate_pdf(data):
 
     half = (content_w - 5*mm) / 2
 
-    cluster_content = [
-        Paragraph('SLEEP PROFILE — CLUSTER MATCH', ps('cl',7,DIM,bold=True)),
-        Spacer(1,3*mm),
-        Paragraph(f'Cluster {cluster_id} — {c_desc.get("label","")}', ps('ct',11,NAVY,bold=True)),
-        Spacer(1,2*mm),
-        Paragraph(c_desc.get('desc',''), ps('cd',8,BLACK,leading=12)),
-    ]
+    # Build bullet list for sleep profile
+    bullets = c_desc.get('bullets', [])
+    bullet_items = [Paragraph('SLEEP TYPE PROFILE', ps('cl',7,DIM,bold=True)), Spacer(1,3*mm)]
+    for b in bullets:
+        bullet_items.append(Paragraph(f'• {b}', ps('cd',8,BLACK,leading=13)))
+        bullet_items.append(Spacer(1,1*mm))
+    cluster_content = bullet_items
 
+    # VAR insight — use new insight field
     var_content = [
-        Paragraph('SIGNAL BEHAVIOUR — VAR INSIGHTS', ps('vl',7,DIM,bold=True)),
+        Paragraph('BRAIN SIGNAL BEHAVIOUR', ps('vl',7,DIM,bold=True)),
         Spacer(1,3*mm),
-        Paragraph(var.get('title',''), ps('vt',11,NAVY,bold=True)),
-        Spacer(1,2*mm),
-        Paragraph(f"<b>Signals:</b> {var.get('signals','')}", ps('vs',8,BLACK,leading=12)),
-        Spacer(1,2*mm),
-        Paragraph(var.get('meaning',''), ps('vm',8,BLACK,leading=12)),
+        Paragraph(var.get('insight', var.get('meaning','')), ps('vm',8,BLACK,leading=13)),
         Spacer(1,3*mm),
-        Paragraph(f"Cross coupling: {var.get('cross_coupling','')}", ps('vc',7,DIM)),
+        Paragraph(f'EEG persistence: {var.get("eeg_persistence",0):.3f}   EOG persistence: {var.get("eog_persistence",0):.3f}   EMG persistence: {var.get("emg_persistence",0):.3f}', ps('vc',7,DIM)),
     ]
 
     two_col = Table([[cluster_content, var_content]], colWidths=[half, half])
